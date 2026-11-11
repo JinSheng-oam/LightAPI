@@ -2,6 +2,9 @@
 title LightAPI Desktop Dev
 cd /d "%~dp0"
 
+:: 遇到历史应用进程直接强制退出
+taskkill /f /im lightapi.exe >nul 2>nul
+
 where pwsh.exe >nul 2>nul
 if %ERRORLEVEL% equ 0 (
     pwsh.exe -NoLogo -ExecutionPolicy Bypass -File "%~dp0start-dev.ps1"
@@ -14,7 +17,7 @@ if %ERRORLEVEL% equ 0 (
     goto end
 )
 
-echo [ERROR] PowerShell not found in PATH.
+echo [ERROR] 未找到 PowerShell (pwsh.exe 或 powershell.exe)，请检查系统环境变量 PATH。
 pause
 
 :end
