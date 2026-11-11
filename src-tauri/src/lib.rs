@@ -1,5 +1,6 @@
 pub mod domain;
 pub mod error;
+pub mod http;
 pub mod repository;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
