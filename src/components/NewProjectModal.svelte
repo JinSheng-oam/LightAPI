@@ -44,41 +44,46 @@
     onclick={() => showNewProjectModal.set(false)}
   >
     <div
-      class="modal-card"
-      style="max-width: 420px;"
+      class="modal-dialog"
+      style="max-width: 440px;"
       role="dialog"
       aria-modal="true"
       tabindex="-1"
       onclick={(e) => e.stopPropagation()}
       onkeydown={(e) => e.stopPropagation()}
     >
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-        <h2 style="font-size: 16px; font-weight: 600;">新建本地项目</h2>
-        <button type="button" class="leaf-action-btn" onclick={() => showNewProjectModal.set(false)}>×</button>
+      <div class="modal-header">
+        <span class="modal-title">新建本地项目</span>
+        <button type="button" class="leaf-action-btn" onclick={() => showNewProjectModal.set(false)} title="关闭">×</button>
       </div>
 
-      <div style="margin-bottom: 14px;">
-        <label for="newProjectNameInput" style="display: block; font-size: 12px; margin-bottom: 6px; color: var(--text-secondary);">
-          项目名称：
-        </label>
-        <input
-          id="newProjectNameInput"
-          type="text"
-          class="ctrl-input"
-          style="width: 100%; font-size: 14px;"
-          placeholder="例如：电商系统 API"
-          bind:value={projectName}
-          onkeydown={(e) => e.key === 'Enter' && createProject()}
-        />
-      </div>
-
-      {#if errorMsg}
-        <div class="alert-error" style="margin-bottom: 12px;">
-          ❌ {errorMsg}
+      <div class="modal-body">
+        <div>
+          <label for="newProjectNameInput" style="display: block; font-size: 12px; margin-bottom: 6px; color: var(--text-secondary);">
+            项目名称
+          </label>
+          <input
+            id="newProjectNameInput"
+            type="text"
+            class="ctrl-input"
+            style="width: 100%; font-size: 13px;"
+            placeholder="例如：核心交易与支付网关"
+            bind:value={projectName}
+            onkeydown={(e) => e.key === 'Enter' && createProject()}
+          />
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+            项目将保存在本地 SQLite 数据库中，拥有完全独立的环境变量与接口集合。
+          </div>
         </div>
-      {/if}
 
-      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        {#if errorMsg}
+          <div class="alert-error">
+            ❌ {errorMsg}
+          </div>
+        {/if}
+      </div>
+
+      <div class="modal-footer" style="justify-content: flex-end; gap: 8px;">
         <button type="button" class="ctrl-btn ghost" onclick={() => showNewProjectModal.set(false)}>取消</button>
         <button type="button" class="ctrl-btn primary" disabled={isCreating} onclick={createProject}>
           {isCreating ? '创建中...' : '立即创建'}

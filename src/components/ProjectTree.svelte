@@ -106,12 +106,23 @@
 
   <div class="tree-container" style="flex: 1; overflow-y: auto; padding: 4px;">
     {#if !$currentProject}
-      <div style="padding: 16px; color: var(--text-muted); font-size: 12px; text-align: center;">
-        暂未选择项目
+      <div style="padding: 32px 16px; color: var(--text-muted); font-size: 12px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+        <span style="font-size: 24px; opacity: 0.6;">📦</span>
+        <span>暂未选择或创建项目</span>
+        <span style="font-size: 11px; color: var(--text-muted);">点击右侧快速开始</span>
       </div>
     {:else if filteredRequests.length === 0}
-      <div style="padding: 16px; color: var(--text-muted); font-size: 12px; text-align: center;">
-        无匹配接口
+      <div style="padding: 32px 16px; color: var(--text-muted); font-size: 12px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+        <span style="font-size: 24px; opacity: 0.6;">🔍</span>
+        <span>当前项目暂无接口</span>
+        <button
+          type="button"
+          class="ctrl-btn"
+          style="font-size: 11px; margin-top: 4px;"
+          onclick={createNewRequest}
+        >
+          + 新建首条请求
+        </button>
       </div>
     {:else}
       <!-- Folders with requests -->

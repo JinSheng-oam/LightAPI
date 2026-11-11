@@ -80,7 +80,7 @@
     onclick={() => showImportModal.set(false)}
   >
     <div
-      class="modal-card"
+      class="modal-dialog"
       style="max-width: 680px;"
       role="dialog"
       aria-modal="true"
@@ -88,77 +88,113 @@
       onclick={(e) => e.stopPropagation()}
       onkeydown={(e) => e.stopPropagation()}
     >
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-        <h2 style="font-size: 16px; font-weight: 600;">导入 Apifox / OpenAPI / Swagger</h2>
-        <button type="button" class="leaf-action-btn" onclick={() => showImportModal.set(false)}>×</button>
+      <div class="modal-header">
+        <span class="modal-title">导入 Apifox / OpenAPI / Swagger 数据（两阶段安全预览）</span>
+        <button type="button" class="leaf-action-btn" onclick={() => showImportModal.set(false)} title="关闭">×</button>
       </div>
 
-      <div style="margin-bottom: 14px;">
-        <label for="importFileInput" style="display: block; font-size: 12px; margin-bottom: 6px; color: var(--text-secondary);">
-          选择本地 .json / .yaml 文件：
+      <div class="modal-body">
+        <!-- File Dropzone -->
+        <label class="file-upload-zone">
+          <div class="file-upload-icon">📂</div>
+          <div class="file-upload-title">
+            {fileName && rawContent ? `已选择文件: ${fileName}` : '点击选择本地 .json / .yaml / .yml 文件'}
+          </div>
+          <div class="file-upload-hint">
+            支持 OpenAPI 3.0/3.1、Swagger 2.0 及 Apifox 导出文件，系统自动解析顶层特征
+          </div>
+          <input
+            id="importFileInput"
+            type="file"
+            accept=".json,.yaml,.yml"
+            style="display: none;"
+            onchange={handleFileUpload}
+          />
         </label>
-        <input
-          id="importFileInput"
-          type="file"
-          accept=".json,.yaml,.yml"
-          onchange={handleFileUpload}
-          style="font-size: 12px;"
-        />
-      </div>
 
-      <div style="margin-bottom: 14px;">
-        <label for="importContentArea" style="display: block; font-size: 12px; margin-bottom: 4px; color: var(--text-secondary);">
-          或直接粘贴 JSON / YAML 内容：
-        </label>
-        <textarea
-          id="importContentArea"
-          class="code-textarea"
-          rows="6"
-          bind:value={rawContent}
-          placeholder="在此粘贴 OpenAPI 3.0 / 3.1 或 Swagger 2.0 内容..."
-        ></textarea>
-      </div>
-
-      {#if errorMsg}
-        <div class="alert-error" style="margin-bottom: 12px;">
-          ❌ {errorMsg}
+        <div>
+          <label for="importContentArea" style="display: block; font-size: 12px; margin-bottom: 6px; color: var(--text-secondary);">
+            或直接粘贴规范文本内容：
+          </label>
+          <textarea
+            id="importContentArea"
+            class="code-textarea"
+            rows="5"
+            bind:value={rawContent}
+            placeholder="在此直接粘贴 OpenAPI 3.0 / 3.1 或 Swagger 2.0 的 JSON / YAML 文本..."
+          ></textarea>
         </div>
-      {/if}
 
-      {#if preview}
-        <div style="padding: 12px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 16px;">
-          <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">
-            识别格式: <span style="color: var(--accent-primary);">{preview.detected_format}</span>
+        {#if errorMsg}
+          <div class="alert-error">
+            ❌ {errorMsg}
           </div>
-          <div style="display: flex; gap: 16px; font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
-            <span>项目: <strong>{preview.project_name}</strong></span>
-            <span>接口数: <strong>{preview.request_count}</strong></span>
-            <span>分组数: <strong>{preview.folder_count}</strong></span>
-          </div>
+        {/if}
 
-          {#if preview.warnings.length > 0}
-            <div class="text-warn" style="margin-top: 8px; font-size: 11px;">
-              {#each preview.warnings as w}
-                <div>⚠️ [{w.code}] {w.message}</div>
-              {/each}
+        {#if preview}
+          <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 14px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+              <span style="font-size: 13px; font-weight: 600;">解析与合规性预览</span>
+              <span class="brand-tag">识别格式: {preview.detected_format}</span>
             </div>
+
+            <div class="preview-metrics">
+              <div class="metric-box">
+                <div class="metric-label">项目名称</div>
+                <div class="metric-val" style="font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title={preview.project_name}>
+                  {preview.project_name}
+                </div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-label">解析接口数</div>
+                <div class="metric-val" style="color: var(--accent-primary);">{preview.request_count}</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-label">分组目录数</div>
+                <div class="metric-val">{preview.folder_count}</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-label">潜在风险告警</div>
+                <div class="metric-val" style:color={preview.warnings.length > 0 ? 'var(--status-warn)' : 'var(--status-ok)'}>
+                  {preview.warnings.length}
+                </div>
+              </div>
+            </div>
+
+            {#if preview.warnings.length > 0}
+              <div class="warn-list" style="margin-top: 12px;">
+                {#each preview.warnings as w}
+                  <div class="warn-item">
+                    ⚠️ [{w.code}] {w.message}
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        {/if}
+      </div>
+
+      <div class="modal-footer">
+        <span style="font-size: 11px; color: var(--text-muted);">
+          本地导入完全离线运行，不会向任何外部云端发送接口数据
+        </span>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="ctrl-btn ghost" onclick={() => showImportModal.set(false)}>
+            取消
+          </button>
+          {#if !preview}
+            <button type="button" class="ctrl-btn primary" disabled={isAnalyzing} onclick={analyzeContent}>
+              {isAnalyzing ? '分析中...' : '解析预览'}
+            </button>
+          {:else}
+            <button type="button" class="ctrl-btn" onclick={() => (preview = null)}>
+              重新选择
+            </button>
+            <button type="button" class="ctrl-btn primary" disabled={isCommitting} onclick={commitImport}>
+              {isCommitting ? '导入写入中...' : '确认导入并写入项目'}
+            </button>
           {/if}
         </div>
-      {/if}
-
-      <div style="display: flex; justify-content: flex-end; gap: 10px;">
-        {#if !preview}
-          <button type="button" class="ctrl-btn" disabled={isAnalyzing} onclick={analyzeContent}>
-            {isAnalyzing ? '分析中...' : '解析预览'}
-          </button>
-        {:else}
-          <button type="button" class="ctrl-btn ghost" onclick={() => (preview = null)}>
-            重新选择
-          </button>
-          <button type="button" class="ctrl-btn primary" disabled={isCommitting} onclick={commitImport}>
-            {isCommitting ? '导入写入中...' : '确认导入并写入项目'}
-          </button>
-        {/if}
       </div>
     </div>
   </div>
