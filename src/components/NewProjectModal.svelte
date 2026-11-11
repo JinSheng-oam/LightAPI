@@ -73,7 +73,7 @@
       </div>
 
       {#if errorMsg}
-        <div style="padding: 8px; background: rgba(239, 68, 68, 0.1); color: var(--status-err); border-radius: 4px; font-size: 12px; margin-bottom: 12px;">
+        <div class="alert-error" style="margin-bottom: 12px;">
           ❌ {errorMsg}
         </div>
       {/if}

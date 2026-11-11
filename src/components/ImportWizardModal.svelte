@@ -120,7 +120,7 @@
       </div>
 
       {#if errorMsg}
-        <div style="padding: 10px; background: rgba(239, 68, 68, 0.1); color: var(--status-err); border-radius: 4px; font-size: 12px; margin-bottom: 12px;">
+        <div class="alert-error" style="margin-bottom: 12px;">
           ❌ {errorMsg}
         </div>
       {/if}
@@ -137,7 +137,7 @@
           </div>
 
           {#if preview.warnings.length > 0}
-            <div style="margin-top: 8px; font-size: 11px; color: #eab308;">
+            <div class="text-warn" style="margin-top: 8px; font-size: 11px;">
               {#each preview.warnings as w}
                 <div>⚠️ [{w.code}] {w.message}</div>
               {/each}

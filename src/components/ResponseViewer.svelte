@@ -45,7 +45,7 @@
       ⏳ 正在通过 Rust reqwest 发起请求...
     </div>
   {:else if $executionError}
-    <div style="padding: 16px; color: var(--status-err); background: rgba(239, 68, 68, 0.1); border-radius: 6px; margin: 12px;">
+    <div class="alert-error" style="margin: 12px;">
       <div style="font-weight: 600; font-size: 14px; margin-bottom: 6px;">❌ 请求执行失败</div>
       <div style="font-size: 12px; font-family: monospace;">{$executionError}</div>
     </div>
@@ -119,7 +119,7 @@
       style="flex: 1; overflow: auto; padding: 8px;"
     >
       {#if $activeResponse.body_truncated}
-        <div style="padding: 4px 8px; background: rgba(234, 179, 8, 0.15); color: #eab308; font-size: 11px; border-radius: 4px; margin-bottom: 6px;">
+        <div class="alert-warn" style="margin-bottom: 6px; font-size: 11px;">
           ⚠️ 响应体过大（大于 1MB），已自动截断预览以保证界面流畅
         </div>
       {/if}

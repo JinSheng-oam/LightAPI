@@ -32,7 +32,13 @@
 
   --status-ok: #22c55e;
   --status-warn: #f59e0b;
+  --status-warn-text: #facc15;
+  --status-warn-bg: rgba(245, 158, 11, 0.12);
+  --status-warn-border: rgba(245, 158, 11, 0.28);
   --status-danger: #ef4444;
+  --status-err: #ef4444;
+  --status-err-bg: rgba(239, 68, 68, 0.12);
+  --status-err-border: rgba(239, 68, 68, 0.28);
   --prod-hazard: #f97316;
   --prod-hazard-bg: rgba(249, 115, 22, 0.12);
 
@@ -73,6 +79,18 @@
   --method-patch-bg: rgba(126, 34, 206, 0.11);
   --method-delete: #b91c1c;
   --method-delete-bg: rgba(185, 28, 28, 0.11);
+
+  --status-ok: #15803d;
+  --status-warn: #b45309;
+  --status-warn-text: #b45309;
+  --status-warn-bg: rgba(180, 83, 9, 0.08);
+  --status-warn-border: rgba(180, 83, 9, 0.25);
+  --status-danger: #b91c1c;
+  --status-err: #b91c1c;
+  --status-err-bg: rgba(185, 28, 28, 0.08);
+  --status-err-border: rgba(185, 28, 28, 0.25);
+  --prod-hazard: #c2410c;
+  --prod-hazard-bg: rgba(194, 65, 12, 0.09);
 
   --shadow-modal: 0 20px 40px rgba(15, 23, 42, 0.18);
 }
@@ -132,6 +150,29 @@ textarea:focus:not(:focus-visible) {
     transform: none !important;
     animation: none !important;
   }
+}
+
+/* Status Alert Cards */
+.alert-error {
+  padding: 10px 14px;
+  background: var(--status-err-bg);
+  border: 1px solid var(--status-err-border);
+  color: var(--status-err);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.alert-warn {
+  padding: 8px 12px;
+  background: var(--status-warn-bg);
+  border: 1px solid var(--status-warn-border);
+  color: var(--status-warn-text);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.text-warn {
+  color: var(--status-warn-text);
 }
 
 /* App Shell */
