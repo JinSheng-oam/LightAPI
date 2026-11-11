@@ -214,8 +214,14 @@
     {/if}
 
     <!-- Tab navigation -->
-    <div class="tab-nav">
+    <div class="tab-nav" role="tablist" aria-label="请求配置分类">
       <button
+        type="button"
+        role="tab"
+        id="req-tab-params"
+        aria-controls="req-panel-params"
+        aria-selected={currentSubTab === 'params'}
+        tabindex={currentSubTab === 'params' ? 0 : -1}
         class="tab-btn"
         class:active={currentSubTab === 'params'}
         onclick={() => (currentSubTab = 'params')}
@@ -223,6 +229,12 @@
         Params ({$activeRequest.params.length})
       </button>
       <button
+        type="button"
+        role="tab"
+        id="req-tab-headers"
+        aria-controls="req-panel-headers"
+        aria-selected={currentSubTab === 'headers'}
+        tabindex={currentSubTab === 'headers' ? 0 : -1}
         class="tab-btn"
         class:active={currentSubTab === 'headers'}
         onclick={() => (currentSubTab = 'headers')}
@@ -230,6 +242,12 @@
         Headers ({$activeRequest.headers.length})
       </button>
       <button
+        type="button"
+        role="tab"
+        id="req-tab-body"
+        aria-controls="req-panel-body"
+        aria-selected={currentSubTab === 'body'}
+        tabindex={currentSubTab === 'body' ? 0 : -1}
         class="tab-btn"
         class:active={currentSubTab === 'body'}
         onclick={() => (currentSubTab = 'body')}
@@ -237,6 +255,12 @@
         Body ({$activeRequest.body.mode})
       </button>
       <button
+        type="button"
+        role="tab"
+        id="req-tab-auth"
+        aria-controls="req-panel-auth"
+        aria-selected={currentSubTab === 'auth'}
+        tabindex={currentSubTab === 'auth' ? 0 : -1}
         class="tab-btn"
         class:active={currentSubTab === 'auth'}
         onclick={() => (currentSubTab = 'auth')}
@@ -247,7 +271,13 @@
 
     <!-- SubTab: Params -->
     {#if currentSubTab === 'params'}
-      <div class="subtab-content">
+      <div
+        class="subtab-content"
+        role="tabpanel"
+        id="req-panel-params"
+        aria-labelledby="req-tab-params"
+        tabindex="0"
+      >
         <table class="kv-table">
           <thead>
             <tr>
@@ -295,7 +325,13 @@
 
     <!-- SubTab: Headers -->
     {#if currentSubTab === 'headers'}
-      <div class="subtab-content">
+      <div
+        class="subtab-content"
+        role="tabpanel"
+        id="req-panel-headers"
+        aria-labelledby="req-tab-headers"
+        tabindex="0"
+      >
         <table class="kv-table">
           <thead>
             <tr>
@@ -336,7 +372,13 @@
 
     <!-- SubTab: Body -->
     {#if currentSubTab === 'body'}
-      <div class="subtab-content">
+      <div
+        class="subtab-content"
+        role="tabpanel"
+        id="req-panel-body"
+        aria-labelledby="req-tab-body"
+        tabindex="0"
+      >
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
           <div style="display: flex; gap: 12px; font-size: 12px;">
             <label><input type="radio" bind:group={$activeRequest.body.mode} value="none" /> none</label>
@@ -372,7 +414,14 @@
 
     <!-- SubTab: Auth -->
     {#if currentSubTab === 'auth'}
-      <div class="subtab-content" style="max-width: 500px;">
+      <div
+        class="subtab-content"
+        role="tabpanel"
+        id="req-panel-auth"
+        aria-labelledby="req-tab-auth"
+        tabindex="0"
+        style="max-width: 500px;"
+      >
         <div style="margin-bottom: 12px;">
           <label for="authTypeSelect" style="display: block; font-size: 12px; margin-bottom: 4px; color: var(--text-secondary);">认证方式</label>
           <select id="authTypeSelect" class="ctrl-select" bind:value={$activeRequest.auth.auth_type}>

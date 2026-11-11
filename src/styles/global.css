@@ -107,6 +107,33 @@ button, input, select, textarea {
   font-variant-numeric: tabular-nums;
 }
 
+/* Focus indicators (WCAG 2.1 SC 2.4.7) */
+:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+button:focus:not(:focus-visible),
+input:focus:not(:focus-visible),
+select:focus:not(:focus-visible),
+textarea:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Reduced motion adaptation preserving state changes without disorienting movement */
+@media (prefers-reduced-motion: reduce) {
+  .modal-backdrop,
+  .modal-card,
+  .btn-send,
+  .ctrl-btn,
+  .tab-btn,
+  .api-leaf {
+    transition: opacity 0.05s ease, background-color 0.05s ease, border-color 0.05s ease !important;
+    transform: none !important;
+    animation: none !important;
+  }
+}
+
 /* App Shell */
 .app-shell {
   display: grid;

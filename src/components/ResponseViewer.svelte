@@ -61,8 +61,14 @@
       </div>
 
       <div style="display: flex; align-items: center; gap: 8px;">
-        <div class="tab-nav" style="border: none; margin: 0;">
+        <div class="tab-nav" role="tablist" aria-label="响应展示视图" style="border: none; margin: 0;">
           <button
+            type="button"
+            role="tab"
+            id="resp-tab-pretty"
+            aria-controls="resp-panel-content"
+            aria-selected={respSubTab === 'pretty'}
+            tabindex={respSubTab === 'pretty' ? 0 : -1}
             class="tab-btn"
             class:active={respSubTab === 'pretty'}
             onclick={() => (respSubTab = 'pretty')}
@@ -70,6 +76,12 @@
             Pretty
           </button>
           <button
+            type="button"
+            role="tab"
+            id="resp-tab-raw"
+            aria-controls="resp-panel-content"
+            aria-selected={respSubTab === 'raw'}
+            tabindex={respSubTab === 'raw' ? 0 : -1}
             class="tab-btn"
             class:active={respSubTab === 'raw'}
             onclick={() => (respSubTab = 'raw')}
@@ -77,6 +89,12 @@
             Raw
           </button>
           <button
+            type="button"
+            role="tab"
+            id="resp-tab-headers"
+            aria-controls="resp-panel-content"
+            aria-selected={respSubTab === 'headers'}
+            tabindex={respSubTab === 'headers' ? 0 : -1}
             class="tab-btn"
             class:active={respSubTab === 'headers'}
             onclick={() => (respSubTab = 'headers')}
@@ -85,14 +103,21 @@
           </button>
         </div>
 
-        <button class="ctrl-btn ghost" style="font-size: 11px;" onclick={copyResponseToClipboard}>
+        <button type="button" class="ctrl-btn ghost" style="font-size: 11px;" onclick={copyResponseToClipboard}>
           {copyFeedback || '复制响应'}
         </button>
       </div>
     </div>
 
     <!-- Response Body Container -->
-    <div class="resp-body-wrap" style="flex: 1; overflow: auto; padding: 8px;">
+    <div
+      class="resp-body-wrap"
+      role="tabpanel"
+      id="resp-panel-content"
+      aria-labelledby="resp-tab-{respSubTab}"
+      tabindex="0"
+      style="flex: 1; overflow: auto; padding: 8px;"
+    >
       {#if $activeResponse.body_truncated}
         <div style="padding: 4px 8px; background: rgba(234, 179, 8, 0.15); color: #eab308; font-size: 11px; border-radius: 4px; margin-bottom: 6px;">
           ⚠️ 响应体过大（大于 1MB），已自动截断预览以保证界面流畅
