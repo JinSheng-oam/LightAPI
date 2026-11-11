@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LightAPI — 轻量级 Apifox 兼容 API 调试与测试工作台 (交互原型)</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Top Desktop Header -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="brand">
+          <span class="brand-mark">LA</span>
+          <span class="brand-title">LightAPI</span>
+          <span class="brand-tag">Tauri 2 · Rust reqwest · SQLite</span>
+        </div>
+
+        <label for="projectSelect" style="color: var(--text-secondary); font-size: 12px;">项目</label>
+        <select id="projectSelect" class="ctrl-select" title="切换本地项目"></select>
+        <button id="btnNewProject" class="ctrl-btn" title="新建本地空项目">+ 新建项目</button>
+      </div>
+
+      <div class="topbar-center">
+        <div class="env-selector-wrap">
+          <span id="envDot" class="env-badge-dot"></span>
+          <select id="envSelect" class="ctrl-select" title="切换当前环境 (F05)"></select>
+          <span id="prodBadge" class="prod-pill" style="display: none;">PROD 生产保护开启</span>
+        </div>
+        <button id="btnEnvManager" class="ctrl-btn" title="配置环境变量与服务前置 URL">环境变量 ({{var}})</button>
+        <button id="btnImportWizard" class="ctrl-btn primary" title="导入 Apifox / OpenAPI / Swagger 文件">导入 Apifox / OpenAPI</button>
+      </div>
+
+      <div class="topbar-right">
+        <button id="btnToggleEmptyState" class="ctrl-btn ghost" title="切换预览首次启动空状态 (AC-01)">首次启动空状态</button>
+        <button id="btnThemeToggle" class="ctrl-btn ghost" title="切换深色/浅色主题">浅色/深色</button>
+      </div>
+    </header>
+
+    <!-- First-Launch Empty State (AC-01) -->
+    <main id="emptyLaunchView" class="empty-launch hidden">
+      <div class="empty-box">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+          <span class="brand-tag">AC-01 首次启动 · 离线优先 · 无需登录</span>
+          <span class="mono" style="font-size: 11px; color: var(--text-muted);">SQLite WAL Ready · 0 Cloud Telemetry</span>
+        </div>
+        <h1 style="font-size: 20px; font-weight: 600; margin-bottom: 6px;">欢迎使用 LightAPI 本地接口工作台</h1>
+        <p style="color: var(--text-secondary); font-size: 13px;">
+          直接导入 Apifox 导出的 OpenAPI / Swagger 或原生项目数据，通过 Rust <code class="mono">reqwest</code> 引擎发起零跨域限制的真实 HTTP 调试。所有环境变量、敏感凭据与历史记录均保存在本机。
+        </p>
+
+        <div class="empty-grid">
+          <button class="action-tile" id="emptyBtnImport">
+            <span style="font-weight: 600; font-size: 14px; color: var(--accent-primary);">导入 Apifox / OpenAPI 文件</span>
+            <span style="color: var(--text-secondary); font-size: 12px;">
+              支持 OpenAPI 3.0/3.1 (JSON/YAML)、Swagger 2.0 及 Apifox 原生导出样本预览与冲突合并。
+            </span>
+          </button>
+
+          <button class="action-tile" id="emptyBtnLoadDemo">
+            <span style="font-weight: 600; font-size: 14px;">加载示例项目进入工作台</span>
+            <span style="color: var(--text-secondary); font-size: 12px;">
+              打开「核心交易与支付网关」示例工程，体验多环境切换、变量替换、生产保护与声明式断言。
+            </span>
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- 3-Pane Main Workbench -->
+    <main id="workbenchView" class="workbench">
+      <!-- Left Sidebar: API Tree & Request History -->
+      <aside class="sidebar">
+        <div class="sidebar-nav">
+          <button id="navTabTree" class="sidebar-tab active">
+            <span>接口目录</span>
+            <span id="treeTotalCount" class="count-pill">0</span>
+          </button>
+          <button id="navTabHistory" class="sidebar-tab">
+            <span>请求历史</span>
+            <span id="historyTotalCount" class="count-pill">0</span>
+          </button>
+        </div>
+
+        <!-- Tree Search & Filters -->
+        <div id="treeControls" class="sidebar-search-bar">
+          <div class="search-input-wrap">
+            <input id="treeSearchInput" type="text" class="search-input" placeholder="搜索接口名称、路径或 Method..." />
+            <span class="kbd-hint">Ctrl+F</span>
+          </div>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+            <div id="methodFilterBar" class="method-filters">
+              <button class="filter-chip active" data-method="ALL">全部</button>
+              <button class="filter-chip" data-method="GET">GET</button>
+              <button class="filter-chip" data-method="POST">POST</button>
+              <button class="filter-chip" data-method="PUT">PUT</button>
+              <button class="filter-chip" data-method="DELETE">DEL</button>
+            </div>
+            <button id="btnAddEndpoint" class="ctrl-btn" style="height: 22px; padding: 0 7px; font-size: 11px;" title="手动新建接口">+ 接口</button>
+          </div>
+        </div>
+
+        <!-- Tree Container -->
+        <div id="treeListContainer" class="tree-container"></div>
+
+        <!-- History Container -->
+        <div id="historyListContainer" class="tree-container" style="display: none;"></div>
+      </aside>
+
+      <!-- Right Main Area: Tabs + Request Builder + Response Viewer -->
+      <section class="main-pane">
+        <!-- Multi-Tab Bar -->
+        <div id="openTabsBar" class="tabs-bar"></div>
+
+        <!-- Production Environment Risk Guardrail Banner (F05 / AC-12) -->
+        <div id="prodGuardBanner" class="prod-guard-banner hidden">
+          <div>
+            <strong>生产环境安全护栏已激活：</strong>
+            <span>当前指向生产环境 <code id="prodBannerUrl" class="mono"></code>。发送非只读请求（POST / PUT / PATCH / DELETE）前必须经过人工二次确认，且禁止自动重试。</span>
+          </div>
+          <span class="mono" style="font-size: 11px;">AC-12 Guardrail</span>
+        </div>
+
+        <!-- Center-Top: Request Editor -->
+        <div class="request-pane">
+          <div class="url-bar-row">
+            <select id="reqMethodSelect" class="method-select">
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+              <option value="PATCH">PATCH</option>
+              <option value="DELETE">DELETE</option>
+              <option value="HEAD">HEAD</option>
+              <option value="OPTIONS">OPTIONS</option>
+            </select>
+
+            <div class="url-input-box">
+              <input id="reqPathInput" type="text" class="url-input" placeholder="{{baseUrl}}/api/v1/resource" />
+              <span id="reqSourceBadge" class="brand-tag" title="原始操作标识 (source_id / operationId)">operationId: -</span>
+            </div>
+
+            <select id="simScenarioSelect" class="ctrl-select" title="原型响应模拟器：测试不同返回场景 (AC-06/07/08)">
+              <option value="ok">模拟: 200 正常响应</option>
+              <option value="unauth">模拟: 401 鉴权失败</option>
+              <option value="server_err">模拟: 500 服务端错误</option>
+              <option value="timeout">模拟: 慢请求 / 可中途取消</option>
+              <option value="large">模拟: 2.4MB 大响应截断保护</option>
+            </select>
+
+            <div style="display: flex; gap: 6px;">
+              <button id="btnSendRequest" class="send-btn" title="通过 Rust reqwest 发送请求 (Ctrl+Enter)">
+                <span id="sendBtnLabel">发送</span>
+                <span class="mono" style="font-size: 10px; opacity: 0.8;">Ctrl+↵</span>
+              </button>
+              <button id="btnSaveRequest" class="ctrl-btn" style="height: 34px;" title="保存当前接口修改到本地 SQLite (Ctrl+S)">保存</button>
+              <button id="btnDuplicateRequest" class="ctrl-btn" style="height: 34px;" title="复制当前接口">复制</button>
+            </div>
+          </div>
+
+          <div class="resolved-url-hint">
+            <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
+              <span>实际解析地址：</span>
+              <code id="resolvedUrlPreview">https://dev-api.lightapi.local/v1/orders/create</code>
+              <span id="missingVarWarning" class="var-warn-pill" style="display: none;"></span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span id="reqTitleDisplay" style="color: var(--text-primary); font-weight: 500;"></span>
+            </div>
+          </div>
+
+          <!-- Request Builder Sub-tabs -->
+          <div id="reqSubTabs" class="section-tabs">
+            <button class="sec-tab active" data-subtab="params">Params <span id="badgeParamsCount" class="count-pill">0</span></button>
+            <button class="sec-tab" data-subtab="headers">Headers <span id="badgeHeadersCount" class="count-pill">0</span></button>
+            <button class="sec-tab" data-subtab="body">Body <span id="badgeBodyMode" class="count-pill">json</span></button>
+            <button class="sec-tab" data-subtab="auth">Auth <span id="badgeAuthType" class="count-pill">Bearer</span></button>
+            <button class="sec-tab" data-subtab="assertions">断言 (Assertions) <span id="badgeAssertCount" class="count-pill">0</span></button>
+            <button class="sec-tab" data-subtab="resolved">实际发送预览 (脱敏)</button>
+          </div>
+
+          <!-- Sub-tab Content Area -->
+          <div id="reqEditorBody" class="editor-body-area"></div>
+        </div>
+
+        <!-- Center-Bottom: Response Viewer -->
+        <div class="response-pane">
+          <div class="response-meta-bar">
+            <div class="meta-metrics">
+              <span style="font-weight: 600;">响应结果</span>
+              <span id="respStatusBadge" class="status-pill ok">200 OK</span>
+              <span class="mono">耗时: <strong id="respDuration">42 ms</strong></span>
+              <span class="mono">大小: <strong id="respSize">1.48 KB</strong></span>
+              <span id="respTruncatedNotice" class="prod-pill" style="display: none;">已启用大响应限量预览 (AC-08)</span>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <button id="btnCopyResp" class="ctrl-btn" style="height: 24px; font-size: 11px;">复制响应</button>
+              <button id="btnCopyCurl" class="ctrl-btn" style="height: 24px; font-size: 11px;" title="自动遮罩 Authorization / Cookie / Secret (AC-13)">复制脱敏 cURL</button>
+              <button id="btnSaveRespFile" class="ctrl-btn" style="height: 24px; font-size: 11px;">保存到文件</button>
+            </div>
+          </div>
+
+          <div id="respSubTabs" class="section-tabs">
+            <button class="sec-tab active" data-resptab="pretty">Pretty JSON</button>
+            <button class="sec-tab" data-resptab="raw">Raw 原文 (安全转义)</button>
+            <button class="sec-tab" data-resptab="headers">Headers & Cookies <span id="badgeRespHeaders" class="count-pill">6</span></button>
+            <button class="sec-tab" data-resptab="assertions">断言结果 <span id="badgeRespAssertions" class="count-pill">4/4</span></button>
+          </div>
+
+          <div id="respContentArea" class="response-content"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom Status Bar -->
+    <footer class="statusbar">
+      <div class="statusbar-left">
+        <span class="mono">Engine: <strong>Rust reqwest 0.12 (rustls)</strong></span>
+        <span class="mono">Storage: <strong>SQLite WAL (Local)</strong></span>
+        <span>安全策略: <strong>导入不执行脚本 · 敏感日志默认脱敏</strong></span>
+      </div>
+      <div class="statusbar-right">
+        <span class="mono">冷启动预算: ≤ 2.0s | 内存预算: ≤ 150 MiB</span>
+        <span class="mono">快捷键: Ctrl+Enter 发送 · Ctrl+S 保存 · Ctrl+F 搜索</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Modal 1: Two-Stage Import Wizard (F02) -->
+  <div id="importModalBackdrop" class="modal-backdrop hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <span class="modal-title">导入 Apifox / OpenAPI / Swagger 数据（两阶段安全预览）</span>
+        <button id="btnCloseImportModal" class="ctrl-btn ghost">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+          <span style="color: var(--text-secondary); font-size: 12px;">
+            步骤 1：选择预设测试 Fixture 样本，或上传本机真实 <code class="mono">.json / .yaml / .yml</code> 文件（自动探测顶层特征，不依赖扩展名）：
+          </span>
+          <label class="ctrl-btn" style="cursor: pointer;">
+            <span>选择本机文件...</span>
+            <input id="localFileInput" type="file" accept=".json,.yaml,.yml" style="display: none;" />
+          </label>
+        </div>
+
+        <div id="fixtureSelectorGrid" class="fixture-cards"></div>
+
+        <!-- Preview Report Box -->
+        <div id="importPreviewBox" style="display: flex; flex-direction: column; gap: 12px; padding-top: 6px; border-top: 1px solid var(--border-subtle);"></div>
+      </div>
+      <div class="modal-footer">
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary);">
+          <span>冲突处理策略：</span>
+          <select id="importConflictPolicy" class="ctrl-select">
+            <option value="new_project">新建独立项目（推荐）</option>
+            <option value="skip_existing">合并到当前项目：跳过同源已有接口（保护本地修改）</option>
+            <option value="update_unmodified">合并到当前项目：仅更新未手工修改的接口</option>
+          </select>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button id="btnCancelImport" class="ctrl-btn">取消</button>
+          <button id="btnCommitImport" class="ctrl-btn primary">确认事务写入 (SQLite Commit)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Environment & Secret Variables Manager (F05) -->
+  <div id="envModalBackdrop" class="modal-backdrop hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <span class="modal-title">环境与变量管理（优先级：请求临时覆盖 &gt; 当前环境 &gt; 项目全局）</span>
+        <button id="btnCloseEnvModal" class="ctrl-btn ghost">✕</button>
+      </div>
+      <div id="envModalBody" class="modal-body"></div>
+      <div class="modal-footer">
+        <span style="font-size: 11px; color: var(--text-secondary);">
+          安全提示：标记为「敏感 Secret」的变量优先写入 OS 凭据库，在 UI、日志与导出 cURL 中默认遮罩。
+        </span>
+        <button id="btnSaveEnvModal" class="ctrl-btn primary">保存环境配置</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: Production Environment High-Risk Confirmation (AC-12) -->
+  <div id="prodConfirmModalBackdrop" class="modal-backdrop hidden">
+    <div class="modal-dialog" style="max-width: 520px;">
+      <div class="modal-header" style="border-bottom-color: rgba(239, 68, 68, 0.4);">
+        <span class="modal-title" style="color: var(--status-danger);">⚠️ 生产环境高危请求确认 (AC-12)</span>
+        <button id="btnCloseProdModal" class="ctrl-btn ghost">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 13px;">
+          你正在向 <strong>生产环境 (PROD)</strong> 发送非幂等/修改类请求，请核对以下信息：
+        </p>
+        <div style="padding: 10px 12px; background: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: 4px; display: flex; flex-direction: column; gap: 6px;" class="mono">
+          <div>Method: <strong id="prodModalMethod" style="color: var(--method-post);">POST</strong></div>
+          <div>URL: <span id="prodModalUrl"></span></div>
+          <div>安全约束: <strong>禁用自动重试 · 敏感响应默认不落盘</strong></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnCancelProdSend" class="ctrl-btn">取消发送</button>
+        <button id="btnConfirmProdSend" class="ctrl-btn danger">确认发送至生产环境</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
