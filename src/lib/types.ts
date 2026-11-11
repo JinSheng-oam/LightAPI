@@ -41,6 +41,7 @@ export interface FormDataItem {
   value: string;
   item_type: string; // 'text' | 'file'
   enabled: boolean;
+  description?: string | null;
 }
 
 export interface RequestBody {

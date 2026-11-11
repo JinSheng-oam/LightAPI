@@ -28,10 +28,10 @@
   function addBaseUrl() {
     if (!$currentEnvironment) return;
     $currentEnvironment.base_urls.push({
-      key: `service_${$currentEnvironment.base_urls.length + 1}`,
+      key: $currentEnvironment.base_urls.length === 0 ? 'default' : `service_${$currentEnvironment.base_urls.length + 1}`,
       url: 'http://localhost:8080',
       description: '',
-      enabled: false,
+      enabled: $currentEnvironment.base_urls.length === 0,
     });
     currentEnvironment.set($currentEnvironment);
   }
@@ -57,13 +57,11 @@
 
   async function createNewEnvironment() {
     if (!$currentProject) return;
-    const name = prompt('请输入新环境名称：', '测试环境');
-    if (!name?.trim()) return;
-
+    const nextIdx = $environments.length + 1;
     const newEnv = {
       id: crypto.randomUUID(),
       project_id: $currentProject.id,
-      name: name.trim(),
+      name: nextIdx === 1 ? '开发环境' : `环境 ${nextIdx}`,
       base_urls: [
         {
           key: 'default',
@@ -94,7 +92,7 @@
 
 <svelte:window onkeydown={handleBackdropKeydown} />
 
-{#if $showEnvModal && $currentEnvironment}
+{#if $showEnvModal}
   <div
     class="modal-backdrop"
     role="presentation"
@@ -110,113 +108,173 @@
       onkeydown={(e) => e.stopPropagation()}
     >
       <div class="modal-header">
-        <span class="modal-title">环境变量与前置 URL 管理</span>
+        <span class="modal-title">环境与变量配置</span>
         <button type="button" class="leaf-action-btn" onclick={() => showEnvModal.set(false)} title="关闭">×</button>
       </div>
 
-      <div class="modal-body">
-        <div style="display: flex; gap: 16px; align-items: flex-end;">
-          <div style="flex: 1;">
-            <label for="envNameInput" style="display: block; font-size: 12px; margin-bottom: 6px; color: var(--text-secondary);">环境名称</label>
-            <input id="envNameInput" type="text" class="ctrl-input" style="width: 100%;" bind:value={$currentEnvironment.name} />
-          </div>
-          <div style="display: flex; align-items: center; padding-bottom: 8px;">
-            <label style="font-size: 12px; display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
-              <input type="checkbox" bind:checked={$currentEnvironment.is_production} />
-              <span style="color: var(--status-err); font-weight: 600;">标记为生产环境 (PROD 保护)</span>
-            </label>
-          </div>
+      <!-- Environment Switcher Bar -->
+      <div class="env-tabs-bar">
+        <div class="env-tabs-list">
+          {#each $environments as env}
+            <button
+              type="button"
+              class="env-tab-pill"
+              class:active={$currentEnvironment?.id === env.id}
+              onclick={() => currentEnvironment.set(env)}
+            >
+              <span
+                class="cselect-dot"
+                style="background: {env.is_production ? 'var(--status-danger)' : 'var(--status-ok)'};"
+              ></span>
+              <span>{env.name || '未命名'}</span>
+            </button>
+          {/each}
         </div>
-
-        <!-- Base URLs Section -->
-        <div>
-          <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">
-            服务前置 URL ({`{{baseUrl}}`})
-          </div>
-          <table class="kv-table" style="font-size: 12px;">
-            <thead>
-              <tr>
-                <th style="width: 36px; text-align: center;">主</th>
-                <th style="width: 110px;">服务标识</th>
-                <th>前置地址 (URL)</th>
-                <th>说明</th>
-                <th style="width: 36px;"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each $currentEnvironment.base_urls as b, idx}
-                <tr class="kv-row">
-                  <td style="text-align: center;">
-                    <input
-                      type="radio"
-                      name="main_base_url"
-                      checked={b.enabled}
-                      onchange={() => {
-                        $currentEnvironment!.base_urls.forEach((u, i) => (u.enabled = i === idx));
-                      }}
-                    />
-                  </td>
-                  <td><input type="text" class="kv-key" bind:value={b.key} /></td>
-                  <td><input type="text" class="kv-val" bind:value={b.url} placeholder="https://api.example.com" /></td>
-                  <td><input type="text" class="kv-val" bind:value={b.description} placeholder="说明" /></td>
-                  <td style="text-align: center;"><button type="button" class="kv-del" onclick={() => removeBaseUrl(idx)}>×</button></td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-          <button type="button" class="ctrl-btn ghost" style="margin-top: 8px; font-size: 12px;" onclick={addBaseUrl}>
-            + 添加服务地址
-          </button>
-        </div>
-
-        <!-- Variables Section -->
-        <div>
-          <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">
-            键值变量表 (在 URL / Header / Body 中使用 {`{{key}}`})
-          </div>
-          <table class="kv-table" style="font-size: 12px;">
-            <thead>
-              <tr>
-                <th style="width: 36px; text-align: center;">启用</th>
-                <th style="width: 130px;">变量名 (Key)</th>
-                <th>变量值 (Value)</th>
-                <th style="width: 50px; text-align: center;">保密</th>
-                <th style="width: 36px;"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each $currentEnvironment.variables as v, idx}
-                <tr class="kv-row">
-                  <td style="text-align: center;"><input type="checkbox" bind:checked={v.enabled} /></td>
-                  <td><input type="text" class="kv-key" bind:value={v.key} placeholder="token" /></td>
-                  <td>
-                    <input
-                      type={v.is_secret ? 'password' : 'text'}
-                      class="kv-val"
-                      bind:value={v.value}
-                      placeholder="值"
-                    />
-                  </td>
-                  <td style="text-align: center;"><input type="checkbox" bind:checked={v.is_secret} title="标记为保密变量" /></td>
-                  <td style="text-align: center;"><button type="button" class="kv-del" onclick={() => removeVariable(idx)}>×</button></td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-          <button type="button" class="ctrl-btn ghost" style="margin-top: 8px; font-size: 12px;" onclick={addVariable}>
-            + 添加变量
-          </button>
-        </div>
+        <button type="button" class="ctrl-btn" style="height: 26px; font-size: 11.5px; padding: 0 8px;" onclick={createNewEnvironment}>
+          + 新建环境
+        </button>
       </div>
 
-      <div class="modal-footer">
-        <button type="button" class="ctrl-btn" onclick={createNewEnvironment}>
-          + 新建另一个环境
-        </button>
-        <div style="display: flex; gap: 8px;">
-          <button type="button" class="ctrl-btn ghost" onclick={() => showEnvModal.set(false)}>取消</button>
-          <button type="button" class="ctrl-btn primary" onclick={saveEnvironment}>保存配置</button>
+      {#if !$currentEnvironment}
+        <div class="modal-body" style="padding: 36px 20px; align-items: center; text-align: center; color: var(--text-muted);">
+          <span>当前项目暂无环境配置</span>
+          <button type="button" class="ctrl-btn primary" style="margin-top: 6px;" onclick={createNewEnvironment}>
+            + 创建首个环境
+          </button>
         </div>
+      {:else}
+        <div class="modal-body">
+          <!-- Name and Prod Guard Row -->
+          <div class="env-meta-row">
+            <div style="flex: 1;">
+              <label for="envNameInput" class="field-label">环境名称</label>
+              <input
+                id="envNameInput"
+                type="text"
+                class="ctrl-input"
+                style="width: 100%; height: 32px;"
+                placeholder="例如：开发环境"
+                bind:value={$currentEnvironment.name}
+              />
+            </div>
+
+            <label class="prod-toggle-card" class:active={$currentEnvironment.is_production}>
+              <input type="checkbox" bind:checked={$currentEnvironment.is_production} />
+              <span>生产环境保护 (PROD)</span>
+            </label>
+          </div>
+
+          <!-- Base URLs Section -->
+          <div class="env-section">
+            <div class="env-section-header">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span class="env-section-title">前置 URL</span>
+                <code class="code-chip">{`{{baseUrl}}`}</code>
+              </div>
+              <button type="button" class="kv-add-inline" onclick={addBaseUrl}>
+                + 添加地址
+              </button>
+            </div>
+
+            <table class="kv-table">
+              <thead>
+                <tr>
+                  <th style="width: 48px; text-align: center;">默认</th>
+                  <th style="width: 130px;">服务标识</th>
+                  <th>前置地址 (URL)</th>
+                  <th style="width: 150px;">说明</th>
+                  <th style="width: 38px;"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {#if $currentEnvironment.base_urls.length === 0}
+                  <tr>
+                    <td colspan="5" class="kv-empty-cell">暂无前置 URL，点击右上角「+ 添加地址」配置</td>
+                  </tr>
+                {:else}
+                  {#each $currentEnvironment.base_urls as b, idx}
+                    <tr class="kv-row">
+                      <td style="text-align: center;">
+                        <input
+                          type="radio"
+                          name="main_base_url"
+                          checked={b.enabled}
+                          onchange={() => {
+                            $currentEnvironment!.base_urls.forEach((u, i) => (u.enabled = i === idx));
+                          }}
+                        />
+                      </td>
+                      <td><input type="text" class="kv-key" bind:value={b.key} placeholder="default" /></td>
+                      <td><input type="text" class="kv-val" bind:value={b.url} placeholder="https://api.example.com" /></td>
+                      <td><input type="text" class="kv-val" bind:value={b.description} placeholder="可选说明" /></td>
+                      <td style="text-align: center;">
+                        <button type="button" class="kv-del" onclick={() => removeBaseUrl(idx)} title="删除">×</button>
+                      </td>
+                    </tr>
+                  {/each}
+                {/if}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Variables Section -->
+          <div class="env-section">
+            <div class="env-section-header">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span class="env-section-title">环境变量</span>
+                <code class="code-chip">{`{{key}}`}</code>
+              </div>
+              <button type="button" class="kv-add-inline" onclick={addVariable}>
+                + 添加变量
+              </button>
+            </div>
+
+            <table class="kv-table">
+              <thead>
+                <tr>
+                  <th style="width: 48px; text-align: center;">启用</th>
+                  <th style="width: 160px;">变量名 (Key)</th>
+                  <th>变量值 (Value)</th>
+                  <th style="width: 52px; text-align: center;">保密</th>
+                  <th style="width: 38px;"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {#if $currentEnvironment.variables.length === 0}
+                  <tr>
+                    <td colspan="5" class="kv-empty-cell">暂无环境变量，点击右上角「+ 添加变量」配置</td>
+                  </tr>
+                {:else}
+                  {#each $currentEnvironment.variables as v, idx}
+                    <tr class="kv-row">
+                      <td style="text-align: center;"><input type="checkbox" bind:checked={v.enabled} /></td>
+                      <td><input type="text" class="kv-key" bind:value={v.key} placeholder="token" /></td>
+                      <td>
+                        <input
+                          type={v.is_secret ? 'password' : 'text'}
+                          class="kv-val"
+                          bind:value={v.value}
+                          placeholder="变量值"
+                        />
+                      </td>
+                      <td style="text-align: center;"><input type="checkbox" bind:checked={v.is_secret} title="隐藏敏感值" /></td>
+                      <td style="text-align: center;">
+                        <button type="button" class="kv-del" onclick={() => removeVariable(idx)} title="删除">×</button>
+                      </td>
+                    </tr>
+                  {/each}
+                {/if}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {/if}
+
+      <div class="modal-footer" style="justify-content: flex-end; gap: 8px;">
+        <button type="button" class="ctrl-btn ghost" onclick={() => showEnvModal.set(false)}>取消</button>
+        <button type="button" class="ctrl-btn primary" disabled={!$currentEnvironment} onclick={saveEnvironment}>
+          保存配置
+        </button>
       </div>
     </div>
   </div>

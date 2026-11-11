@@ -11,8 +11,32 @@
   } from '../stores/appStore';
   import { api } from '../lib/api';
   import type { ExecuteRequestInput } from '../lib/types';
+  import CustomSelect, { type SelectOption } from './CustomSelect.svelte';
+
+  const methodOptions: SelectOption[] = [
+    { value: 'GET', label: 'GET', colorClass: 'text-GET' },
+    { value: 'POST', label: 'POST', colorClass: 'text-POST' },
+    { value: 'PUT', label: 'PUT', colorClass: 'text-PUT' },
+    { value: 'DELETE', label: 'DELETE', colorClass: 'text-DELETE' },
+    { value: 'PATCH', label: 'PATCH', colorClass: 'text-PATCH' },
+    { value: 'HEAD', label: 'HEAD', colorClass: 'text-HEAD' },
+    { value: 'OPTIONS', label: 'OPTIONS', colorClass: 'text-OPTIONS' },
+  ];
+
+  const paramTypeOptions: SelectOption[] = [
+    { value: 'query', label: 'Query' },
+    { value: 'path', label: 'Path' },
+  ];
+
+  const authTypeOptions: SelectOption[] = [
+    { value: 'none', label: 'No Auth (无认证)' },
+    { value: 'bearer', label: 'Bearer Token' },
+    { value: 'basic', label: 'Basic Auth' },
+    { value: 'api-key', label: 'API Key' },
+  ];
 
   let currentSubTab: 'params' | 'headers' | 'body' | 'auth' = $state('params');
+  let saveFeedback = $state(false);
 
   let resolvedUrlPreview = $derived(
     $activeRequest
@@ -26,6 +50,8 @@
       const saved = await api.saveRequest($activeRequest);
       requests.update((list) => list.map((r) => (r.id === saved.id ? saved : r)));
       activeRequest.set(saved);
+      saveFeedback = true;
+      setTimeout(() => (saveFeedback = false), 1500);
     } catch (e) {
       alert(`保存请求失败: ${e}`);
     }
@@ -34,7 +60,6 @@
   async function executeCurrentRequest() {
     if (!$activeRequest || !$currentProject) return;
 
-    // Safety check for production environment
     if (
       $currentEnvironment?.is_production &&
       !['GET', 'HEAD', 'OPTIONS'].includes($activeRequest.method.toUpperCase())
@@ -49,7 +74,6 @@
     executionError.set(null);
 
     try {
-      // 1. Resolve variables in URL, headers, and params
       const finalUrl = resolveVariables($activeRequest.path, $currentEnvironment);
 
       const resolvedParams = $activeRequest.params.map((p) => ({
@@ -131,6 +155,27 @@
     activeRequest.set($activeRequest);
   }
 
+  function addFormDataRow() {
+    if (!$activeRequest) return;
+    if (!$activeRequest.body.form_data) {
+      $activeRequest.body.form_data = [];
+    }
+    $activeRequest.body.form_data.push({
+      key: '',
+      value: '',
+      item_type: 'text',
+      enabled: true,
+      description: '',
+    });
+    activeRequest.set($activeRequest);
+  }
+
+  function removeFormDataRow(index: number) {
+    if (!$activeRequest || !$activeRequest.body.form_data) return;
+    $activeRequest.body.form_data.splice(index, 1);
+    activeRequest.set($activeRequest);
+  }
+
   function formatJsonBody() {
     if (!$activeRequest || !$activeRequest.body.raw) return;
     try {
@@ -156,60 +201,67 @@
 <svelte:window onkeydown={onKeydown} />
 
 {#if !$activeRequest}
-  <div style="flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 14px;">
-    从左侧目录选择或新建一个接口进行调试
+  <div style="flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 13px;">
+    从左侧目录选择或新建一个接口
   </div>
 {:else}
   <section class="editor-panel">
-    <!-- Title and Description Bar -->
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+    <!-- Title and Save Bar -->
+    <div class="req-header-bar">
       <input
         type="text"
-        class="ctrl-input"
-        style="font-size: 15px; font-weight: 600; background: transparent; border: 1px solid transparent; width: 320px;"
+        class="req-title-input"
         bind:value={$activeRequest.name}
         placeholder="接口名称"
         onchange={saveCurrentRequest}
       />
-      <div style="display: flex; gap: 8px;">
-        <button class="ctrl-btn" onclick={saveCurrentRequest} title="保存接口 (Ctrl+S)">
-          保存
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <button
+          type="button"
+          class="ctrl-btn"
+          onclick={saveCurrentRequest}
+          title="保存接口 (Ctrl+S)"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          {saveFeedback ? '已保存' : '保存'}
         </button>
       </div>
     </div>
 
-    <!-- URL and Method Bar -->
+    <!-- Unified URL & Method Bar -->
     <div class="url-bar">
-      <select class="method-select" bind:value={$activeRequest.method}>
-        <option value="GET">GET</option>
-        <option value="POST">POST</option>
-        <option value="PUT">PUT</option>
-        <option value="DELETE">DELETE</option>
-        <option value="PATCH">PATCH</option>
-        <option value="HEAD">HEAD</option>
-        <option value="OPTIONS">OPTIONS</option>
-      </select>
+      <div class="url-composer">
+        <CustomSelect
+          bind:value={$activeRequest.method}
+          options={methodOptions}
+          variant="method"
+          ariaLabel="HTTP 方法"
+        />
 
-      <input
-        type="text"
-        class="url-input"
-        bind:value={$activeRequest.path}
-        placeholder="请求路径或完整 URL，支持变量插值"
-      />
+        <input
+          type="text"
+          class="url-input"
+          bind:value={$activeRequest.path}
+          placeholder={"输入请求 URL 或使用 {{baseUrl}}/path"}
+        />
+      </div>
 
       <button
+        type="button"
         class="btn-send"
         disabled={$isExecuting}
         onclick={executeCurrentRequest}
-        title="发送真实请求 (Ctrl+Enter)"
+        title="发送请求 (Ctrl+Enter)"
       >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         {$isExecuting ? '发送中...' : '发送'}
       </button>
     </div>
 
     {#if resolvedUrlPreview && resolvedUrlPreview !== $activeRequest.path}
-      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px; font-family: monospace;">
-        解析后目标: {resolvedUrlPreview}
+      <div class="resolved-preview-bar">
+        <span style="color: var(--text-muted);">目标地址:</span>
+        <span style="color: var(--text-primary);">{resolvedUrlPreview}</span>
       </div>
     {/if}
 
@@ -226,7 +278,10 @@
         class:active={currentSubTab === 'params'}
         onclick={() => (currentSubTab = 'params')}
       >
-        Params ({$activeRequest.params.length})
+        Params
+        {#if $activeRequest.params.length > 0}
+          <span class="tab-badge">{$activeRequest.params.length}</span>
+        {/if}
       </button>
       <button
         type="button"
@@ -239,7 +294,10 @@
         class:active={currentSubTab === 'headers'}
         onclick={() => (currentSubTab = 'headers')}
       >
-        Headers ({$activeRequest.headers.length})
+        Headers
+        {#if $activeRequest.headers.length > 0}
+          <span class="tab-badge">{$activeRequest.headers.length}</span>
+        {/if}
       </button>
       <button
         type="button"
@@ -252,7 +310,10 @@
         class:active={currentSubTab === 'body'}
         onclick={() => (currentSubTab = 'body')}
       >
-        Body ({$activeRequest.body.mode})
+        Body
+        {#if $activeRequest.body.mode !== 'none'}
+          <span class="tab-badge">{$activeRequest.body.mode === 'raw-json' ? 'JSON' : $activeRequest.body.mode === 'raw-text' ? 'Text' : 'Form'}</span>
+        {/if}
       </button>
       <button
         type="button"
@@ -265,7 +326,10 @@
         class:active={currentSubTab === 'auth'}
         onclick={() => (currentSubTab = 'auth')}
       >
-        Auth ({$activeRequest.auth.auth_type})
+        Auth
+        {#if $activeRequest.auth.auth_type !== 'none'}
+          <span class="tab-badge">{$activeRequest.auth.auth_type}</span>
+        {/if}
       </button>
     </div>
 
@@ -281,43 +345,51 @@
         <table class="kv-table">
           <thead>
             <tr>
-              <th style="width: 36px;"></th>
-              <th style="width: 80px;">类型</th>
-              <th>参数名 (Key)</th>
-              <th>参数值 (Value)</th>
+              <th style="width: 44px; text-align: center;">启用</th>
+              <th style="width: 96px;">类型</th>
+              <th style="width: 30%;">参数名 (Key)</th>
+              <th style="width: 35%;">参数值 (Value)</th>
               <th>说明</th>
-              <th style="width: 40px;"></th>
+              <th style="width: 38px;"></th>
             </tr>
           </thead>
           <tbody>
-            {#each $activeRequest.params as p, idx}
-              <tr class="kv-row">
-                <td style="text-align: center;">
-                  <input type="checkbox" bind:checked={p.enabled} />
-                </td>
-                <td>
-                  <select bind:value={p.param_type} class="ctrl-select" style="padding: 2px 4px; font-size: 11px;">
-                    <option value="query">Query</option>
-                    <option value="path">Path</option>
-                  </select>
-                </td>
-                <td>
-                  <input type="text" class="kv-key" bind:value={p.key} placeholder="key" />
-                </td>
-                <td>
-                  <input type="text" class="kv-val" bind:value={p.value} placeholder="value" />
-                </td>
-                <td>
-                  <input type="text" class="kv-val" bind:value={p.description} placeholder="说明" />
-                </td>
-                <td>
-                  <button class="kv-del" onclick={() => removeParamRow(idx)}>×</button>
-                </td>
+            {#if $activeRequest.params.length === 0}
+              <tr>
+                <td colspan="6" class="kv-empty-cell">暂无请求参数，点击下方「+ 添加参数」新增</td>
               </tr>
-            {/each}
+            {:else}
+              {#each $activeRequest.params as p, idx}
+                <tr class="kv-row">
+                  <td style="text-align: center;">
+                    <input type="checkbox" bind:checked={p.enabled} />
+                  </td>
+                  <td>
+                    <CustomSelect
+                      bind:value={p.param_type}
+                      options={paramTypeOptions}
+                      variant="compact"
+                      ariaLabel="参数类型"
+                    />
+                  </td>
+                  <td>
+                    <input type="text" class="kv-key" bind:value={p.key} placeholder="参数名" />
+                  </td>
+                  <td>
+                    <input type="text" class="kv-val" bind:value={p.value} placeholder="参数值" />
+                  </td>
+                  <td>
+                    <input type="text" class="kv-val" bind:value={p.description} placeholder="可选说明" />
+                  </td>
+                  <td style="text-align: center;">
+                    <button type="button" class="kv-del" onclick={() => removeParamRow(idx)} title="删除行">×</button>
+                  </td>
+                </tr>
+              {/each}
+            {/if}
           </tbody>
         </table>
-        <button class="ctrl-btn ghost" style="margin-top: 8px; font-size: 12px;" onclick={addParamRow}>
+        <button type="button" class="kv-add-inline" style="margin-top: 8px;" onclick={addParamRow}>
           + 添加参数
         </button>
       </div>
@@ -335,36 +407,42 @@
         <table class="kv-table">
           <thead>
             <tr>
-              <th style="width: 36px;"></th>
-              <th>请求头 (Header)</th>
-              <th>值 (Value)</th>
+              <th style="width: 44px; text-align: center;">启用</th>
+              <th style="width: 34%;">请求头 (Header)</th>
+              <th style="width: 38%;">值 (Value)</th>
               <th>说明</th>
-              <th style="width: 40px;"></th>
+              <th style="width: 38px;"></th>
             </tr>
           </thead>
           <tbody>
-            {#each $activeRequest.headers as h, idx}
-              <tr class="kv-row">
-                <td style="text-align: center;">
-                  <input type="checkbox" bind:checked={h.enabled} />
-                </td>
-                <td>
-                  <input type="text" class="kv-key" bind:value={h.key} placeholder="Header-Name" />
-                </td>
-                <td>
-                  <input type="text" class="kv-val" bind:value={h.value} placeholder="Value" />
-                </td>
-                <td>
-                  <input type="text" class="kv-val" bind:value={h.description} placeholder="说明" />
-                </td>
-                <td>
-                  <button class="kv-del" onclick={() => removeHeaderRow(idx)}>×</button>
-                </td>
+            {#if $activeRequest.headers.length === 0}
+              <tr>
+                <td colspan="5" class="kv-empty-cell">暂无自定义请求头，点击下方「+ 添加请求头」新增</td>
               </tr>
-            {/each}
+            {:else}
+              {#each $activeRequest.headers as h, idx}
+                <tr class="kv-row">
+                  <td style="text-align: center;">
+                    <input type="checkbox" bind:checked={h.enabled} />
+                  </td>
+                  <td>
+                    <input type="text" class="kv-key" bind:value={h.key} placeholder="Header-Name" />
+                  </td>
+                  <td>
+                    <input type="text" class="kv-val" bind:value={h.value} placeholder="Value" />
+                  </td>
+                  <td>
+                    <input type="text" class="kv-val" bind:value={h.description} placeholder="可选说明" />
+                  </td>
+                  <td style="text-align: center;">
+                    <button type="button" class="kv-del" onclick={() => removeHeaderRow(idx)} title="删除行">×</button>
+                  </td>
+                </tr>
+              {/each}
+            {/if}
           </tbody>
         </table>
-        <button class="ctrl-btn ghost" style="margin-top: 8px; font-size: 12px;" onclick={addHeaderRow}>
+        <button type="button" class="kv-add-inline" style="margin-top: 8px;" onclick={addHeaderRow}>
           + 添加请求头
         </button>
       </div>
@@ -374,40 +452,107 @@
     {#if currentSubTab === 'body'}
       <div
         class="subtab-content"
+        class:body-flex={$activeRequest.body.mode === 'raw-json' || $activeRequest.body.mode === 'raw-text'}
         role="tabpanel"
         id="req-panel-body"
         aria-labelledby="req-tab-body"
         tabindex="0"
       >
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-          <div style="display: flex; gap: 12px; font-size: 12px;">
-            <label><input type="radio" bind:group={$activeRequest.body.mode} value="none" /> none</label>
-            <label><input type="radio" bind:group={$activeRequest.body.mode} value="raw-json" /> raw (JSON)</label>
-            <label><input type="radio" bind:group={$activeRequest.body.mode} value="raw-text" /> raw (Text)</label>
-            <label><input type="radio" bind:group={$activeRequest.body.mode} value="urlencoded" /> x-www-form-urlencoded</label>
+        <div class="body-toolbar" style="margin-bottom: {$activeRequest.body.mode === 'raw-json' || $activeRequest.body.mode === 'raw-text' ? '0' : '10px'};">
+          <div class="segmented-group" role="radiogroup" aria-label="请求体格式">
+            <button
+              type="button"
+              class="seg-btn"
+              class:active={$activeRequest.body.mode === 'none'}
+              onclick={() => ($activeRequest!.body.mode = 'none')}
+            >
+              none
+            </button>
+            <button
+              type="button"
+              class="seg-btn"
+              class:active={$activeRequest.body.mode === 'raw-json'}
+              onclick={() => ($activeRequest!.body.mode = 'raw-json')}
+            >
+              JSON
+            </button>
+            <button
+              type="button"
+              class="seg-btn"
+              class:active={$activeRequest.body.mode === 'raw-text'}
+              onclick={() => ($activeRequest!.body.mode = 'raw-text')}
+            >
+              Text
+            </button>
+            <button
+              type="button"
+              class="seg-btn"
+              class:active={$activeRequest.body.mode === 'urlencoded'}
+              onclick={() => ($activeRequest!.body.mode = 'urlencoded')}
+            >
+              x-www-form-urlencoded
+            </button>
           </div>
+
           {#if $activeRequest.body.mode === 'raw-json'}
-            <button class="ctrl-btn ghost" style="font-size: 11px; padding: 2px 6px;" onclick={formatJsonBody}>
+            <button
+              type="button"
+              class="ctrl-btn"
+              style="height: 26px; font-size: 11.5px; padding: 0 8px;"
+              onclick={formatJsonBody}
+            >
               格式化 JSON
             </button>
           {/if}
         </div>
 
         {#if $activeRequest.body.mode === 'none'}
-          <div style="color: var(--text-muted); font-size: 12px; padding: 20px; text-align: center;">
-            该请求没有 Body 请求体
+          <div style="color: var(--text-muted); font-size: 12px; padding: 28px 0; text-align: center;">
+            当前请求无请求体 (Body)
           </div>
         {:else if $activeRequest.body.mode === 'raw-json' || $activeRequest.body.mode === 'raw-text'}
           <textarea
             class="code-textarea"
             bind:value={$activeRequest.body.raw}
-            placeholder="在此输入请求体内容，支持变量替换"
-            rows="10"
+            placeholder={$activeRequest.body.mode === 'raw-json' ? '{\n  "key": "value"\n}' : '输入文本请求体内容，支持 {{var}} 变量替换'}
+            spellcheck="false"
           ></textarea>
         {:else}
-          <div style="color: var(--text-muted); font-size: 12px; padding: 10px;">
-            Form-Urlencoded 模式
-          </div>
+          <table class="kv-table">
+            <thead>
+              <tr>
+                <th style="width: 34px; text-align: center;"></th>
+                <th style="width: 34%;">字段名 (Key)</th>
+                <th style="width: 38%;">字段值 (Value)</th>
+                <th>说明</th>
+                <th style="width: 34px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each $activeRequest.body.form_data || [] as item, idx}
+                <tr class="kv-row">
+                  <td style="text-align: center;">
+                    <input type="checkbox" bind:checked={item.enabled} />
+                  </td>
+                  <td>
+                    <input type="text" class="kv-key" bind:value={item.key} placeholder="key" />
+                  </td>
+                  <td>
+                    <input type="text" class="kv-val" bind:value={item.value} placeholder="value" />
+                  </td>
+                  <td>
+                    <input type="text" class="kv-val" bind:value={item.description} placeholder="可选说明" />
+                  </td>
+                  <td style="text-align: center;">
+                    <button type="button" class="kv-del" onclick={() => removeFormDataRow(idx)} title="删除行">×</button>
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+          <button type="button" class="ctrl-btn ghost" style="margin-top: 8px; height: 26px; font-size: 12px;" onclick={addFormDataRow}>
+            + 添加表单字段
+          </button>
         {/if}
       </div>
     {/if}
@@ -420,50 +565,50 @@
         id="req-panel-auth"
         aria-labelledby="req-tab-auth"
         tabindex="0"
-        style="max-width: 500px;"
+        style="max-width: 480px;"
       >
         <div style="margin-bottom: 12px;">
-          <label for="authTypeSelect" style="display: block; font-size: 12px; margin-bottom: 4px; color: var(--text-secondary);">认证方式</label>
-          <select id="authTypeSelect" class="ctrl-select" bind:value={$activeRequest.auth.auth_type}>
-            <option value="none">No Auth (无认证)</option>
-            <option value="bearer">Bearer Token</option>
-            <option value="basic">Basic Auth</option>
-            <option value="api-key">API Key</option>
-          </select>
+          <span style="display: block; font-size: 12px; margin-bottom: 5px; color: var(--text-secondary);">认证方式</span>
+          <CustomSelect
+            bind:value={$activeRequest.auth.auth_type}
+            options={authTypeOptions}
+            ariaLabel="认证方式"
+            minWidth="220px"
+          />
         </div>
 
         {#if $activeRequest.auth.auth_type === 'bearer'}
           <div>
-            <label for="bearerTokenInput" style="display: block; font-size: 12px; margin-bottom: 4px; color: var(--text-secondary);">Token</label>
+            <label for="bearerTokenInput" style="display: block; font-size: 12px; margin-bottom: 5px; color: var(--text-secondary);">Token</label>
             <input
               id="bearerTokenInput"
               type="password"
-              class="ctrl-input"
+              class="ctrl-input mono"
               style="width: 100%;"
               bind:value={$activeRequest.auth.token}
-              placeholder="eyJhbGciOi..."
+              placeholder={"eyJhbGciOi... 或 {{token}}"}
             />
           </div>
         {:else if $activeRequest.auth.auth_type === 'basic'}
-          <div style="display: flex; gap: 8px;">
+          <div style="display: flex; gap: 10px;">
             <div style="flex: 1;">
-              <label for="basicUsernameInput" style="display: block; font-size: 12px; margin-bottom: 4px; color: var(--text-secondary);">Username</label>
+              <label for="basicUsernameInput" style="display: block; font-size: 12px; margin-bottom: 5px; color: var(--text-secondary);">Username</label>
               <input id="basicUsernameInput" type="text" class="ctrl-input" style="width: 100%;" bind:value={$activeRequest.auth.username} />
             </div>
             <div style="flex: 1;">
-              <label for="basicPasswordInput" style="display: block; font-size: 12px; margin-bottom: 4px; color: var(--text-secondary);">Password</label>
+              <label for="basicPasswordInput" style="display: block; font-size: 12px; margin-bottom: 5px; color: var(--text-secondary);">Password</label>
               <input id="basicPasswordInput" type="password" class="ctrl-input" style="width: 100%;" bind:value={$activeRequest.auth.password} />
             </div>
           </div>
         {:else if $activeRequest.auth.auth_type === 'api-key'}
-          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+          <div style="display: flex; gap: 10px;">
             <div style="flex: 1;">
-              <label for="apiKeyNameInput" style="display: block; font-size: 12px; margin-bottom: 4px; color: var(--text-secondary);">Key</label>
-              <input id="apiKeyNameInput" type="text" class="ctrl-input" style="width: 100%;" bind:value={$activeRequest.auth.key} placeholder="X-Api-Key" />
+              <label for="apiKeyNameInput" style="display: block; font-size: 12px; margin-bottom: 5px; color: var(--text-secondary);">Key</label>
+              <input id="apiKeyNameInput" type="text" class="ctrl-input mono" style="width: 100%;" bind:value={$activeRequest.auth.key} placeholder="X-Api-Key" />
             </div>
             <div style="flex: 1;">
-              <label for="apiKeyValueInput" style="display: block; font-size: 12px; margin-bottom: 4px; color: var(--text-secondary);">Value</label>
-              <input id="apiKeyValueInput" type="password" class="ctrl-input" style="width: 100%;" bind:value={$activeRequest.auth.value} />
+              <label for="apiKeyValueInput" style="display: block; font-size: 12px; margin-bottom: 5px; color: var(--text-secondary);">Value</label>
+              <input id="apiKeyValueInput" type="password" class="ctrl-input mono" style="width: 100%;" bind:value={$activeRequest.auth.value} />
             </div>
           </div>
         {/if}

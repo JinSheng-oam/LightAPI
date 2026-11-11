@@ -4,11 +4,13 @@
     folders,
     requests,
     activeRequest,
+    selectRequest,
   } from '../stores/appStore';
   import { api } from '../lib/api';
   import type { CanonicalRequest, HttpMethod } from '../lib/types';
 
   let searchQuery = $state('');
+  let collapsedFolders = $state<Record<string, boolean>>({});
 
   let filteredRequests = $derived(
     $requests.filter((r) => {
@@ -24,20 +26,11 @@
 
   function getMethodClass(method: HttpMethod): string {
     const m = (typeof method === 'string' ? method : '').toUpperCase();
-    switch (m) {
-      case 'GET':
-        return 'method-tag method-get';
-      case 'POST':
-        return 'method-tag method-post';
-      case 'PUT':
-        return 'method-tag method-put';
-      case 'DELETE':
-        return 'method-tag method-delete';
-      case 'PATCH':
-        return 'method-tag method-patch';
-      default:
-        return 'method-tag';
-    }
+    return `method-tag method-${m}`;
+  }
+
+  function toggleFolder(folderId: string) {
+    collapsedFolders[folderId] = !collapsedFolders[folderId];
   }
 
   async function createNewRequest() {
@@ -84,97 +77,126 @@
 
 <aside class="sidebar">
   <div class="sidebar-header">
-    <span style="font-weight: 600; font-size: 13px;">接口目录 ({filteredRequests.length})</span>
+    <div>
+      <span>接口目录</span>
+      <span class="sidebar-count">{filteredRequests.length}</span>
+    </div>
     <button
+      type="button"
       class="ctrl-btn"
-      style="padding: 2px 8px; font-size: 11px;"
+      style="height: 26px; padding: 0 8px; font-size: 11.5px;"
       onclick={createNewRequest}
       disabled={!$currentProject}
-      title="新建空白请求"
+      title="新建接口"
     >
-      + 接口
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      接口
     </button>
   </div>
 
   <div class="sidebar-search">
-    <input
-      type="text"
-      placeholder="搜索接口名称、路径、方法..."
-      bind:value={searchQuery}
-    />
+    <div class="search-box">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input
+        type="text"
+        placeholder="搜索名称、路径或方法..."
+        bind:value={searchQuery}
+      />
+    </div>
   </div>
 
-  <div class="tree-container" style="flex: 1; overflow-y: auto; padding: 4px;">
+  <div class="tree-container">
     {#if !$currentProject}
-      <div style="padding: 32px 16px; color: var(--text-muted); font-size: 12px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;">
-        <span style="font-size: 24px; opacity: 0.6;">📦</span>
-        <span>暂未选择或创建项目</span>
-        <span style="font-size: 11px; color: var(--text-muted);">点击右侧快速开始</span>
+      <div style="padding: 36px 16px; color: var(--text-muted); font-size: 12px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+        <span>暂未选择项目</span>
       </div>
     {:else if filteredRequests.length === 0}
-      <div style="padding: 32px 16px; color: var(--text-muted); font-size: 12px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;">
-        <span style="font-size: 24px; opacity: 0.6;">🔍</span>
-        <span>当前项目暂无接口</span>
-        <button
-          type="button"
-          class="ctrl-btn"
-          style="font-size: 11px; margin-top: 4px;"
-          onclick={createNewRequest}
-        >
-          + 新建首条请求
-        </button>
+      <div style="padding: 36px 16px; color: var(--text-muted); font-size: 12px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+        <span>{searchQuery.trim() ? '无匹配接口' : '当前项目暂无接口'}</span>
+        {#if !searchQuery.trim()}
+          <button
+            type="button"
+            class="ctrl-btn"
+            style="height: 26px; font-size: 11.5px;"
+            onclick={createNewRequest}
+          >
+            + 新建接口
+          </button>
+        {/if}
       </div>
     {:else}
-      <!-- Folders with requests -->
       {#each $folders as folder}
         {@const folderReqs = filteredRequests.filter((r) => r.folder_id === folder.id)}
         {#if folderReqs.length > 0}
           <div class="tree-node">
-            <div class="folder-header">
-              <span>📁 {folder.name}</span>
-              <span style="color: var(--text-muted); font-size: 11px;">({folderReqs.length})</span>
-            </div>
-            <div style="padding-left: 14px;">
-              {#each folderReqs as req}
-                <div class="api-leaf" class:active={$activeRequest?.id === req.id}>
+            <button
+              type="button"
+              class="folder-header"
+              onclick={() => toggleFolder(folder.id)}
+            >
+              <span class="folder-left">
+                <svg
+                  class="folder-chevron"
+                  class:collapsed={collapsedFolders[folder.id]}
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+                <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{folder.name}</span>
+              </span>
+              <span style="color: var(--text-muted); font-size: 11px; font-family: var(--font-mono);">{folderReqs.length}</span>
+            </button>
+            {#if !collapsedFolders[folder.id]}
+              <div class="folder-children">
+                {#each folderReqs as req}
                   <div
+                    class="api-leaf"
+                    class:active={$activeRequest?.id === req.id}
                     role="button"
                     tabindex="0"
-                    style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; cursor: pointer;"
-                    onclick={() => activeRequest.set(req)}
-                    onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && activeRequest.set(req)}
+                    onclick={() => selectRequest(req)}
+                    onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && selectRequest(req)}
                   >
-                    <span class={getMethodClass(req.method)}>{req.method}</span>
-                    <span class="api-leaf-title" title="{req.name} ({req.path})">{req.name}</span>
+                    <div class="api-leaf-main">
+                      <span class={getMethodClass(req.method)}>{req.method}</span>
+                      <span class="api-leaf-title" title="{req.name} ({req.path})">{req.name}</span>
+                    </div>
+                    <button
+                      type="button"
+                      class="leaf-action-btn"
+                      title="删除接口"
+                      onclick={(e) => deleteRequest(e, req)}
+                    >
+                      ×
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    class="leaf-action-btn"
-                    title="删除接口"
-                    onclick={(e) => deleteRequest(e, req)}
-                  >
-                    ×
-                  </button>
-                </div>
-              {/each}
-            </div>
+                {/each}
+              </div>
+            {/if}
           </div>
         {/if}
       {/each}
 
-      <!-- Root level requests (without folder) -->
       {@const rootReqs = filteredRequests.filter((r) => !r.folder_id)}
       {#if rootReqs.length > 0}
-        <div style="margin-top: 4px;">
+        <div>
           {#each rootReqs as req}
-            <div class="api-leaf" class:active={$activeRequest?.id === req.id}>
-              <div
-                role="button"
-                tabindex="0"
-                style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; cursor: pointer;"
-                onclick={() => activeRequest.set(req)}
-                onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && activeRequest.set(req)}
-              >
+            <div
+              class="api-leaf"
+              class:active={$activeRequest?.id === req.id}
+              role="button"
+              tabindex="0"
+              onclick={() => selectRequest(req)}
+              onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && selectRequest(req)}
+            >
+              <div class="api-leaf-main">
                 <span class={getMethodClass(req.method)}>{req.method}</span>
                 <span class="api-leaf-title" title="{req.name} ({req.path})">{req.name}</span>
               </div>

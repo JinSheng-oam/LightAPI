@@ -31,37 +31,45 @@
     if (!$activeResponse?.body_preview) return;
     try {
       await navigator.clipboard.writeText($activeResponse.body_preview);
-      copyFeedback = '已复制!';
+      copyFeedback = '已复制';
       setTimeout(() => (copyFeedback = ''), 2000);
-    } catch (e) {
+    } catch {
       alert('复制失败');
     }
   }
 </script>
 
-<div class="response-panel">
+<div class="response-panel" style="flex: 1; height: 100%;">
   {#if $isExecuting}
-    <div style="flex: 1; display: flex; align-items: center; justify-content: center; color: var(--accent-primary); font-size: 13px;">
-      ⏳ 正在通过 Rust reqwest 发起请求...
+    <div style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--accent-primary); font-size: 12.5px;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span>正在请求...</span>
     </div>
   {:else if $executionError}
-    <div class="alert-error" style="margin: 12px;">
-      <div style="font-weight: 600; font-size: 14px; margin-bottom: 6px;">❌ 请求执行失败</div>
-      <div style="font-size: 12px; font-family: monospace;">{$executionError}</div>
+    <div style="padding: 14px 16px;">
+      <div class="alert-error">
+        <div style="font-weight: 600; font-size: 13px; margin-bottom: 4px;">请求执行失败</div>
+        <div class="mono" style="font-size: 12px;">{$executionError}</div>
+      </div>
     </div>
   {:else if $activeResponse}
-    <!-- Response Header Bar -->
     <div class="resp-header">
-      <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 14px;">
         <span class={getStatusClass($activeResponse.status)}>
           {$activeResponse.status} {$activeResponse.status_text}
         </span>
-        <span class="resp-metric">⏱️ {$activeResponse.duration_ms} ms</span>
-        <span class="resp-metric">📦 {formatBytes($activeResponse.size_bytes)}</span>
+        <span class="resp-metric">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          {$activeResponse.duration_ms} ms
+        </span>
+        <span class="resp-metric">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          {formatBytes($activeResponse.size_bytes)}
+        </span>
       </div>
 
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <div class="tab-nav" role="tablist" aria-label="响应展示视图" style="border: none; margin: 0;">
+      <div style="display: flex; align-items: center; gap: 8px; height: 100%;">
+        <div class="tab-nav" role="tablist" aria-label="响应展示视图" style="border: none; padding: 0; height: 100%; background: transparent;">
           <button
             type="button"
             role="tab"
@@ -70,6 +78,7 @@
             aria-selected={respSubTab === 'pretty'}
             tabindex={respSubTab === 'pretty' ? 0 : -1}
             class="tab-btn"
+            style="height: 100%;"
             class:active={respSubTab === 'pretty'}
             onclick={() => (respSubTab = 'pretty')}
           >
@@ -83,6 +92,7 @@
             aria-selected={respSubTab === 'raw'}
             tabindex={respSubTab === 'raw' ? 0 : -1}
             class="tab-btn"
+            style="height: 100%;"
             class:active={respSubTab === 'raw'}
             onclick={() => (respSubTab = 'raw')}
           >
@@ -96,31 +106,37 @@
             aria-selected={respSubTab === 'headers'}
             tabindex={respSubTab === 'headers' ? 0 : -1}
             class="tab-btn"
+            style="height: 100%;"
             class:active={respSubTab === 'headers'}
             onclick={() => (respSubTab = 'headers')}
           >
-            Headers ({$activeResponse.headers.length})
+            Headers
+            <span class="tab-badge">{$activeResponse.headers.length}</span>
           </button>
         </div>
 
-        <button type="button" class="ctrl-btn ghost" style="font-size: 11px;" onclick={copyResponseToClipboard}>
-          {copyFeedback || '复制响应'}
+        <button
+          type="button"
+          class="ctrl-btn"
+          style="height: 26px; padding: 0 8px; font-size: 11.5px;"
+          onclick={copyResponseToClipboard}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          {copyFeedback || '复制'}
         </button>
       </div>
     </div>
 
-    <!-- Response Body Container -->
     <div
       class="resp-body-wrap"
       role="tabpanel"
       id="resp-panel-content"
       aria-labelledby="resp-tab-{respSubTab}"
       tabindex="0"
-      style="flex: 1; overflow: auto; padding: 8px;"
     >
       {#if $activeResponse.body_truncated}
-        <div class="alert-warn" style="margin-bottom: 6px; font-size: 11px;">
-          ⚠️ 响应体过大（大于 1MB），已自动截断预览以保证界面流畅
+        <div class="alert-warn" style="margin-bottom: 8px; font-size: 11.5px;">
+          响应体超过 1MB，已截断预览以保证界面流畅
         </div>
       {/if}
 
@@ -129,18 +145,18 @@
       {:else if respSubTab === 'raw'}
         <pre class="resp-code"><code>{$activeResponse.body_preview}</code></pre>
       {:else if respSubTab === 'headers'}
-        <table class="kv-table" style="font-size: 12px;">
+        <table class="kv-table" style="font-size: 12px; background: var(--bg-surface);">
           <thead>
             <tr>
-              <th style="width: 200px;">Header Name</th>
+              <th style="width: 220px;">Header Name</th>
               <th>Header Value</th>
             </tr>
           </thead>
           <tbody>
             {#each $activeResponse.headers as [k, v]}
               <tr class="kv-row">
-                <td style="color: var(--text-secondary); font-family: monospace;">{k}</td>
-                <td style="font-family: monospace; word-break: break-all;">{v}</td>
+                <td class="mono" style="color: var(--text-secondary); padding: 6px 10px;">{k}</td>
+                <td class="mono" style="word-break: break-all; padding: 6px 10px;">{v}</td>
               </tr>
             {/each}
           </tbody>
@@ -148,8 +164,11 @@
       {/if}
     </div>
   {:else}
-    <div style="flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 13px;">
-      点击右上角【发送】按钮发起请求，响应结果将展示在此处
+    <div class="resp-header">
+      <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">响应结果</span>
+    </div>
+    <div style="flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 12.5px;">
+      发送请求后在此查看响应内容
     </div>
   {/if}
 </div>

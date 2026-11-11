@@ -28,6 +28,12 @@ export const showImportModal = writable<boolean>(false);
 export const showEnvModal = writable<boolean>(false);
 export const showNewProjectModal = writable<boolean>(false);
 
+export function selectRequest(req: CanonicalRequest | null) {
+  activeRequest.set(req);
+  activeResponse.set(null);
+  executionError.set(null);
+}
+
 // Helper function to resolve variable placeholders e.g. {{baseUrl}}
 export function resolveVariables(template: string, env: Environment | null): string {
   if (!env || !template) return template;
