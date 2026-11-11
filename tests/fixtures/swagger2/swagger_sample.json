@@ -1,0 +1,31 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Swagger 2.0 Sample API",
+    "description": "A sample API definition using Swagger 2.0 format",
+    "version": "1.0.0"
+  },
+  "host": "api.example.com",
+  "basePath": "/v1",
+  "schemes": ["https"],
+  "tags": [
+    {
+      "name": "system",
+      "description": "System status endpoints"
+    }
+  ],
+  "paths": {
+    "/system/health": {
+      "get": {
+        "tags": ["system"],
+        "summary": "Health Check",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  }
+}
